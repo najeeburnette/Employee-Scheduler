@@ -23,10 +23,13 @@ public class Users
 
     public Users(int userID, String userName, String password)
     {
+
         this.userID = userID;
         this.userName = userName;
         this.password = password;
     }
+
+
 
     /**
      * Setter for userID
