@@ -3,6 +3,7 @@ package controller;
 import com.mysql.cj.Messages;
 import helper.JDBC;
 import javafx.event.ActionEvent;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 
 import java.io.IOException;
@@ -13,7 +14,11 @@ import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.stage.Stage;
 import main.Users;
 
 /**
@@ -39,7 +44,7 @@ public class LoginController implements Initializable
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
-        rb = ResourceBundle.getBundle("properties/loginForm", Locale.getDefault());
+        rb = ResourceBundle.getBundle("properties/lang", Locale.getDefault());
         userIdLabel.setText(rb.getString("UserID"));
         labelLocale.setText(rb.getString("Locale"));
         exitButton.setText(rb.getString("Exit"));
@@ -92,7 +97,7 @@ public class LoginController implements Initializable
                 currentUser.setuserName(rs.getString("User_Name"));
 
                 loginAttempt = true;
-                errorPopup(3);
+                toMain();
             }
             while (rs.next());
         }
@@ -114,7 +119,7 @@ public class LoginController implements Initializable
      */
     private void errorPopup(int alertNum) {
 
-        ResourceBundle rb = ResourceBundle.getBundle("properties/loginForm", Locale.getDefault());
+        ResourceBundle rb = ResourceBundle.getBundle("properties/lang", Locale.getDefault());
 
         Alert alert = new Alert(Alert.AlertType.ERROR);
 
@@ -129,11 +134,16 @@ public class LoginController implements Initializable
                 alert.setHeaderText("Login Attempt Fail");
                 alert.showAndWait();
                 break;
-            case 3:
-                alert.setTitle("Success");
-                alert.setHeaderText("Login Attempt Succesful");
-                alert.showAndWait();
-                break;
         }
+    }
+
+    private void toMain() throws IOException
+    {
+        Parent root = FXMLLoader.load(getClass().getResource("/view/Main Menu.fxml"));
+        Stage stage = (Stage)loginButton.getScene().getWindow();
+        Scene scene = new Scene(root);
+        stage.setTitle("Scheduler");
+        stage.setScene(scene);
+        stage.show();
     }
 }

@@ -3,13 +3,16 @@ package controller;
 import helper.JDBC;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.Stage;
 import main.*;
 
 import java.io.IOException;
@@ -19,6 +22,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.ResourceBundle;
 
 /**
@@ -29,9 +33,13 @@ import java.util.ResourceBundle;
 
 public class MainMenuController implements Initializable
 {
+
     PreparedStatement ps;
     private Users userNow;
-    private Customers selectedCustomer;
+    public static Customers selectedCustomer;
+    public static Appointments selectedAppointment;
+
+
     ObservableList<Customers> customerList = FXCollections.observableArrayList();
     private ObservableList<Appointments> appointmentList = FXCollections.observableArrayList();
     ObservableList<Countries> countryList = FXCollections.observableArrayList();
@@ -82,7 +90,7 @@ public class MainMenuController implements Initializable
         titleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
         descColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
         locationColumn.setCellValueFactory(new PropertyValueFactory<>("location"));
-        contactIdColumn.setCellValueFactory(new PropertyValueFactory<>("contactName"));
+        contactIdColumn.setCellValueFactory(new PropertyValueFactory<>("contactID"));
         typeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
         startColumn.setCellValueFactory(new PropertyValueFactory<>("startTime"));
         endColumn.setCellValueFactory(new PropertyValueFactory<>("endTime"));
@@ -99,6 +107,19 @@ public class MainMenuController implements Initializable
 
 
     }
+    /**
+     * Gets the customer object selected in the Customer tableview.
+     *
+     * @return A customer object, null if no customer selected.
+     */
+    public static Customers getSelectedCustomer() { return selectedCustomer; }
+
+    /**
+     * Gets the Appointment object selected by the user in the Appointment tableview.
+     *
+     * @return A appointment object, null if no appointment selected.
+     */
+    public static Appointments getSelectedAppointment() { return selectedAppointment; }
 
     /**
      * Populates the customer table.
@@ -164,6 +185,9 @@ public class MainMenuController implements Initializable
      * Data is pulled from database to populate the table using a prepared statement
      * Data is put inside an observable used to display in the Appointments table view.
      * list which is then used to populate the table view in Scene Builder.
+     *
+     *@throws IOException throws when input or output operation is failed or error interpreted
+     *@throws SQLException throws when sql operation is failed or error interpreted
      */
 
     @FXML private void populateAppointmentsTable() throws SQLException, IOException {
@@ -223,4 +247,65 @@ public class MainMenuController implements Initializable
         }
     }
 
+    /**
+     * This method switches screens to the menu for adding a new customer to the database.
+     *
+     * @throws IOException
+     */
+    @FXML public void onActionAddCustomer(javafx.event.ActionEvent event) throws IOException
+    {
+        Parent root = FXMLLoader.load(getClass().getResource("/view/AddCustomerForm.fxml"));
+        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+        Scene scene = new Scene(root);
+        stage.setTitle("Add Customer");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    /**
+     * This method switches screens to the menu for modifying the information of a customer
+     * selected in the table view.
+     *
+     * @throws IOException
+     */
+    public void onActionUpdateCustomer(javafx.event.ActionEvent actionEvent) throws IOException
+    {
+
+        selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
+
+        if (selectedCustomer == null) {
+            errorPopup(1);
+        }
+        else{
+            Parent root = FXMLLoader.load(getClass().getResource("/view/UpdateCustomerForm.fxml"));
+            Stage stage = (Stage) ((Node) actionEvent.getSource()).getScene().getWindow();
+            Scene scene = new Scene(root);
+            stage.setTitle("Update Customer");
+            stage.setScene(scene);
+            stage.show();
+        }
+    }
+
+    /**
+     * Displays error message prompts for various errors.
+     */
+    private void errorPopup(int alertNum) {
+
+        ResourceBundle rb = ResourceBundle.getBundle("properties/lang", Locale.getDefault());
+
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+
+        switch (alertNum) {
+            case 1:
+                alert.setTitle(rb.getString("Error: Nothing Selected"));
+                alert.setHeaderText(rb.getString("No customer selected!"));
+                alert.showAndWait();
+                break;
+            case 2:
+                alert.setTitle("Error: Nothing Selected");
+                alert.setHeaderText("No appointment selected");
+                alert.showAndWait();
+                break;
+        }
+    }
 }
