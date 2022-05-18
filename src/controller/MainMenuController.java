@@ -287,6 +287,28 @@ public class MainMenuController implements Initializable
     }
 
     /**
+     * This method switches screens to the menu for add appointments to customers
+     * selected in the table view.
+     *
+     * @throws IOException
+     */
+    @FXML void onActionAppointmentButton(ActionEvent event) throws IOException {
+        selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
+
+        if (selectedCustomer == null) {
+            errorPopup(1);
+        }
+        else{
+            Parent root = FXMLLoader.load(getClass().getResource("/view/AddAppointmentForm.fxml"));
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            Scene scene = new Scene(root);
+            stage.setTitle("Add Appointment");
+            stage.setScene(scene);
+            stage.show();
+        }
+    }
+
+    /**
      * Displays error message prompts for various errors.
      */
     private void errorPopup(int alertNum) {
