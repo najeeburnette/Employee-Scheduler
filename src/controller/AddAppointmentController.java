@@ -3,6 +3,7 @@ package controller;
 import helper.JDBC;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -17,24 +18,27 @@ import main.Users;
 
 import java.io.IOException;
 import java.net.URL;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.sql.*;
+import java.time.*;
 import java.util.ResourceBundle;
 
 public class AddAppointmentController implements Initializable {
 
     Users currentUser;
     Customers selectedCustomer;
+    int appointmentId2 = 0;
+    Timestamp start = null;
+    Timestamp end = null;
     private ObservableList<Contacts> contactList = FXCollections.observableArrayList();
     private ObservableList<Users> userList = FXCollections.observableArrayList();
     private ObservableList<Customers> customersList = FXCollections.observableArrayList();
     private ObservableList<LocalTime> startTimeList = FXCollections.observableArrayList();
     private ObservableList<LocalTime> endTimeList = FXCollections.observableArrayList();
+
+
+
+    @FXML private TextField appointmentField;
+    @FXML private Label appointmentLabel;
 
     @FXML private Button cancelButton;
 
@@ -145,7 +149,6 @@ public class AddAppointmentController implements Initializable {
     }
 
 
-
     /**
      * Populates the start and end time combo boxes with times of 30 minute intervals.
      * As well as sets the date picker to the current date by default
@@ -214,4 +217,242 @@ public class AddAppointmentController implements Initializable {
         }
         catch (SQLException e) { System.out.println("SQL Error"); }
     }
+
+    /**
+     * This will alert the User with an error if an appointments start or end time fall outsidebusiness hours.
+     * @param startTime
+     * @return
+     */
+    private boolean hoursOfOperation(LocalTime startTime)
+    {
+        LocalTime openTime = LocalTime.of(8, 00);
+        LocalTime closedTime = LocalTime.of(22, 00);
+
+        LocalDate date = datePicker.getValue();
+
+        ZoneId zoneEST = ZoneId.of("US/Eastern");
+
+        LocalDateTime combined = LocalDateTime.of(date, startTime);
+        ZonedDateTime convertedDate = combined.atZone(ZoneId.systemDefault()).withZoneSameInstant(zoneEST);
+        LocalTime easternTime = convertedDate.toLocalTime();
+
+        if(easternTime.isBefore(openTime) || easternTime.isAfter(closedTime))
+        {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setHeaderText("Chosen timeframe is outside hours of business operation.");
+            alert.setContentText("Selected Time: " + startTime + "\nEastern Time: "
+                    + easternTime + "\nBusiness Hours: 08:00 to 22:00 US/Eastern");
+            alert.showAndWait();
+            return false;
+        }
+        return true;
+
+    }
+
+    /**
+     * This method will display an error message if an appointment being added overlaps an existing appointment.
+     * @param startA
+     * @param endB
+     * @return
+     * @throws SQLException
+     */
+    private boolean appointmentOverlap(Timestamp startA, Timestamp endB) throws SQLException
+    {
+
+        try
+        {
+            if(appointmentField.getText().isBlank())
+            {
+                appointmentId2 = 0;
+            }
+            else
+            {
+                appointmentId2 = Integer.parseInt(appointmentField.getText().trim());
+            }
+
+            int customerID1 = (int) customerComboBox.getValue();
+            int contactID1 = getContactId((String) contactComboBox.getValue());
+
+            System.out.println("\nSelected Appointment ID: " + appointmentId2);
+            System.out.println("Selected Contact ID: " + contactID1);
+            System.out.println("Selected Customer ID: " + customerID1);
+            System.out.println("Selected Start: " + startA);
+            System.out.println("Selected End: " + endB);
+
+            PreparedStatement ps = JDBC.connection.prepareStatement(
+                    "SELECT * FROM appointments "
+                            + "WHERE (? BETWEEN Start AND End OR ? BETWEEN Start AND End OR ? < Start AND ? > End) "
+                            + "AND (Customer_ID = ? AND Appointment_ID != ?)");
+
+            ps.setTimestamp(1, startA);
+            ps.setTimestamp(2, endB);
+            ps.setTimestamp(3, startA);
+            ps.setTimestamp(4, endB);
+            ps.setInt(5, customerID1);
+            ps.setInt(6, appointmentId2);
+
+            ResultSet rs = ps.executeQuery();
+
+            if(rs.next())
+            {
+                return true;
+            }
+            return false;
+        }
+        catch (SQLException ex) { System.out.println("SQL Error!"); }
+        return false;
+
+    }
+
+    private int getContactId(String temp)
+    {
+        for(Contacts look : contactList)
+        {
+            if(look.getContactName().trim().toLowerCase().contains(temp.trim().toLowerCase()))
+            {
+                return look.getContactID();
+            }
+        }
+        return -1;
+    }
+
+    @FXML void onActionSaveButton(ActionEvent event) throws SQLException, IOException
+    {
+        try
+        {
+            String title = "";
+            String description = "";
+            String location = "";
+            String type = "";
+            String lastUpdatedBy = ("test");
+            Integer userId = 1;
+            Integer customerId = 1;
+            Integer contactId = 1;
+            String contact = "";
+
+            LocalTime startBox = (LocalTime) startTimeComboBox.getValue();
+            LocalTime endBox = (LocalTime) endTimeComboBox.getValue();
+
+
+            StringBuilder error = new StringBuilder("Error: ");
+
+            if (titleField.getText().isBlank()) {
+                error.append("\n - Title field is empty.");
+            } else {
+                title = titleField.getText();
+            }
+
+            if (descriptionField.getText().isBlank()) {
+                error.append("\n - Description field is empty.");
+            } else {
+                title = descriptionField.getText();
+            }
+
+            if (locationField.getText().isBlank()) {
+                error.append("\n - Location field is empty.");
+            } else {
+                location = locationField.getText();
+            }
+
+            if (typeField.getText().isBlank()) {
+                error.append("\n - Name field is empty.");
+            } else {
+                type = typeField.getText();
+            }
+
+            if(customerComboBox.getValue() == null) {
+                error.append("\n - Please selected a Customer");
+            } else {
+                customerId = (int) customerComboBox.getValue();
+            }
+
+            if(userComboBox.getValue() == null) {
+                error.append("\n - Please selected a User");
+            } else {
+                userId = (int) userComboBox.getValue();
+            }
+
+            if(contactComboBox.getValue() == null) {
+                error.append("\n - Please selected a Contact");
+            } else {
+                contact = (String) contactComboBox.getValue();
+            }
+
+            if(contact != null){
+                contactId = getContactId(contact);
+            }
+
+            if(startBox == null) {
+                error.append("\n - Please selected a Start Time");
+            }
+
+            if(endBox == null) {
+                error.append("\n - Please selected an End Time");
+            }
+
+            if(startBox != null && endBox != null)
+            {
+                LocalDate date = datePicker.getValue();
+                LocalDateTime apptStart = LocalDateTime.of(date, startBox);
+                LocalDateTime apptEnd = LocalDateTime.of(date, endBox);
+                Timestamp start = Timestamp.valueOf(apptStart);
+                Timestamp end = Timestamp.valueOf(apptEnd);
+            }
+
+            if(datePicker == null)
+            {
+                error.append("\n - Please selected an Date");
+            }
+
+            if(appointmentOverlap(start, end))
+            {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setHeaderText("Appointment Time Conflict");
+                alert.setContentText("The currently selected timeslot conflicts with a pre-existing appointment.");
+                alert.showAndWait();
+                return;
+            }
+
+            if(endBox.isBefore(startBox))
+            {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setHeaderText("ERROR");
+                alert.setContentText("End Time Cannot Be Before Start Time");
+                alert.showAndWait();
+                return;
+            }
+
+            if(!hoursOfOperation(startBox)) { return; }
+
+            if(!hoursOfOperation(endBox)) { return; }
+
+            PreparedStatement ps = JDBC.connection.prepareStatement("INSERT INTO appointments"
+                            + "(Title, Description, Location, Type, Start, "
+                            + "End, Create_Date, Created_By, Last_Update, Last_Updated_By, "
+                            + "Customer_ID, User_ID, Contact_ID) "
+                            + "VALUES(?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS);
+
+            ps.setString(1, title);
+            ps.setString(2, description);
+            ps.setString(3, location);
+            ps.setString(4, type);
+            ps.setTimestamp(5, start);
+            ps.setTimestamp(6, end);
+            ps.setString(7, lastUpdatedBy);
+            ps.setString(8, lastUpdatedBy);
+            ps.setInt(9, customerId);
+            ps.setInt(10, userId);
+            ps.setInt(11, contactId);
+
+            int result = ps.executeUpdate();
+            returnToMain();
+        }
+        catch (SQLException ex)
+        {
+           System.out.println("SQL Error!");
+        }
+    }
+
+
 }
