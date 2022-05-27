@@ -3,6 +3,7 @@ package controller;
 import helper.JDBC;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -22,7 +23,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 /**
@@ -55,6 +58,10 @@ public class MainMenuController implements Initializable
     @FXML private Button deleteCustomerButton;
     @FXML private Button updateAppointmentButton;
     @FXML private Button updateCustomerButton;
+
+    @FXML private RadioButton weeklyRadioButton;
+    @FXML private RadioButton allRadioButton;
+    @FXML private RadioButton monthlyRadioButton;
 
     @FXML private TableView<Customers> customerTable;
     @FXML private TableColumn<Customers, Integer> customerIdColumn;
@@ -104,7 +111,6 @@ public class MainMenuController implements Initializable
         try { populateAppointmentsTable(); }
         catch (SQLException throwables) { throwables.printStackTrace(); }
         catch (IOException e) { e.printStackTrace(); }
-
 
     }
     /**
@@ -193,7 +199,6 @@ public class MainMenuController implements Initializable
     @FXML private void populateAppointmentsTable() throws SQLException, IOException {
         try {
             appointmentList.clear();
-
             PreparedStatement ps = JDBC.connection.prepareStatement(
                     "SELECT * FROM appointments, customers, users, contacts "
                             + "WHERE appointments.User_ID = users.User_ID "
@@ -216,7 +221,7 @@ public class MainMenuController implements Initializable
                 String contactName = rs.getString("Contact_Name");
                 String customerName = rs.getString("Customer_Name");
 
-                // Not needed in table
+                 //Not in table
                 LocalDateTime createdDate = rs.getTimestamp("Create_Date").toLocalDateTime();
                 String createdBy = rs.getString("Created_By");
                 Timestamp lastUpdate = rs.getTimestamp("Last_Update");
@@ -287,13 +292,37 @@ public class MainMenuController implements Initializable
     }
 
     /**
+     * This method switches screens to the menu for updating appointment information.
+     * selected in the table view.
+     *
+     * @throws IOException
+     */
+    @FXML void onActionUpdateAppointment(ActionEvent event) throws IOException {
+        selectedAppointment = appointmentTable.getSelectionModel().getSelectedItem();
+
+        if (selectedAppointment == null) {
+            errorPopup(2);
+        }
+        else{
+            Parent root = FXMLLoader.load(getClass().getResource("/view/UpdateAppointmentForm.fxml"));
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            Scene scene = new Scene(root);
+            stage.setTitle("Update Appointment");
+            stage.setScene(scene);
+            stage.show();
+        }
+    }
+
+    /**
      * This method switches screens to the menu for add appointments to customers
      * selected in the table view.
      *
      * @throws IOException
      */
     @FXML void onActionAppointmentButton(ActionEvent event) throws IOException {
+
         selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
+        System.out.println(selectedCustomer);
 
         if (selectedCustomer == null) {
             errorPopup(1);
@@ -307,12 +336,184 @@ public class MainMenuController implements Initializable
             stage.show();
         }
     }
+//popup on successfull delete not appearing, resource bundle error?
+    /**
+     * Deletes the appointment from the database.
+     * <p>
+     * Checks if an appointment is selected and sends an alert if no.
+     * A prepared statement is used to delete data from the database. The user
+     * A notification pops up upon successful deletion.
+     * </p>
+     *
+     * @param event when the delete button is pushed while an appointment is selected
+     * @throws IOException
+     * @throws SQLException
+     */
+    @FXML
+    void onActionAppointmentDelete(ActionEvent event)
+    {
+        selectedAppointment = appointmentTable.getSelectionModel().getSelectedItem();
+
+        if(selectedAppointment != null)
+        {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Delete Confirmation");
+            alert.setHeaderText("Delete Appointment " + selectedAppointment.getAppointmentID()
+                    + ": " + selectedAppointment.getTitle() + "?");
+            Optional<ButtonType> result = alert.showAndWait();
+
+            if(result.get() == ButtonType.OK)
+            {
+                try
+                {
+                    PreparedStatement ps = JDBC.connection.prepareStatement(
+                            "DELETE appointments.* FROM appointments "
+                                    + "WHERE appointments.Appointment_ID = ?");
+                    ps.setInt(1, selectedAppointment.getAppointmentID());
+
+                    int rs = ps.executeUpdate();
+                    Alert deleteAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                    if(rs > 0)
+                    {
+                        deleteAlert.setTitle("Delete Successful");
+                        deleteAlert.setHeaderText("Appointment " + selectedAppointment.getAppointmentID()
+                                + ": " + selectedAppointment.getTitle() + " has been deleted!");
+                    }
+                    else
+                    {
+                        deleteAlert.setTitle("Delete Failed");
+                        deleteAlert.setHeaderText("Appointment " + selectedAppointment.getAppointmentID()
+                                + ": " + selectedAppointment.getTitle() + " failed to delete!");
+                    }
+                    Optional<ButtonType> result2 = alert.showAndWait();
+
+
+                    populateAppointmentsTable();
+                }
+                catch(SQLException e) { System.out.println("SQL error!"); }
+                catch(Exception e) { System.out.println("Error!"); }
+            }
+            else
+            {
+                return;
+            }
+        }
+        if(selectedAppointment == null)
+        {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error Dialog");
+            alert.setContentText("Select an appointment to delete");
+            alert.showAndWait();
+        }
+    }
+
+    //needs notification upon delete
+    @FXML
+    void onActionCustomerDelete(ActionEvent event) throws IOException{
+
+        selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
+
+        if(selectedCustomer != null)
+        {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setContentText("Are you sure you want to delete " + selectedCustomer.getCustomerName() + "?"
+                            + "\nThis will also delete all associated appointments.");
+            Optional<ButtonType> result = alert.showAndWait();
+
+            if(result.get() == ButtonType.OK)
+            {
+                try
+                {
+                    PreparedStatement ps = JDBC.connection.prepareStatement(
+                            "DELETE appointments.* FROM appointments WHERE Customer_ID =?");
+
+                    PreparedStatement ps2 = JDBC.connection.prepareStatement(
+                            "DELETE customers.* FROM customers WHERE Customer_ID =?");
+
+                    ps.setInt(1, selectedCustomer.getCustomerID());
+                    ps2.setInt(1, selectedCustomer.getCustomerID());
+                    int rs = ps.executeUpdate();
+                    int rs2 = ps2.executeUpdate();
+
+                    if(rs > 0)
+                    {
+                        System.out.println("Customer Deleted");
+                        populateCustomersTable();
+                        populateAppointmentsTable();
+                    }
+                    else
+                    {
+                        System.out.println("Deletion Failed");
+                    }
+                }
+                catch (SQLException ex)
+                {
+                    System.out.println();
+                }
+            }
+        }
+    }
+    @FXML
+    void onActionAllRadio(ActionEvent event) throws SQLException, IOException {
+        populateAppointmentsTable();
+    }
+    /**
+     * Filters the appointment table view by week when button is radio clicked.
+     * @param event when the weekly view radio button is selected.
+     */
+    @FXML
+    void onActionWeeklyButton(ActionEvent event) { weekFilter(appointmentList); }
+
+    /**
+     * Sets the parameters for the weekly appointment view using Lambda expression
+     * @param list the observable list of all appointments
+     */
+    public void weekFilter(ObservableList list)
+    {
+        LocalDateTime weekly = LocalDateTime.now().plusDays(7);
+        LocalDateTime current = LocalDateTime.now();
+
+        FilteredList<Appointments> resultWeek = new FilteredList<>(list);
+        resultWeek.setPredicate(a ->
+        {
+            LocalDateTime date = a.getStart();
+            return (date.isEqual(current) || date.isAfter(current)) && (date.isBefore(weekly) || date.isEqual(weekly));
+        });
+        appointmentTable.setItems(resultWeek);
+    }
+
+    /**
+     * Filters the appointment table view by month when button is radio clicked.
+     * @param event when the monthly view radio button is selected.
+     */
+    @FXML
+    void onActionMonthlyButton(ActionEvent event) { monthFilter(appointmentList);}
+
+    /**
+     * Filters the appointments view based on the month using a Lambda expression
+     * @param list the observable list of all appointments
+     */
+    public void monthFilter(ObservableList list)
+    {
+        LocalDateTime current = LocalDateTime.now();
+        LocalDateTime monthly = current.with(TemporalAdjusters.lastDayOfMonth());
+
+        FilteredList<Appointments> result = new FilteredList<>(list);
+        result.setPredicate(a ->
+        {
+            LocalDateTime date = a.getStart();
+            return (date.isEqual(current) || date.isAfter(current)) && (date.isEqual(monthly) || date.isBefore(monthly));
+        }
+        );
+        appointmentTable.setItems(result);
+    }
 
     /**
      * Displays error message prompts for various errors.
      */
     private void errorPopup(int alertNum) {
 
+        //error currently due to incomplete resource bundle
         ResourceBundle rb = ResourceBundle.getBundle("properties/lang", Locale.getDefault());
 
         Alert alert = new Alert(Alert.AlertType.ERROR);

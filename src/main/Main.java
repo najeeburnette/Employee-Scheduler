@@ -8,6 +8,12 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import java.util.Locale;
 
+/**
+ * The Main Class
+ *
+ * @author Najee Burnette
+ */
+
 public class Main extends Application {
 
     @Override
@@ -20,8 +26,9 @@ public class Main extends Application {
 
 
     public static void main(String[] args) {
-        //Language tester
+
         JDBC.openConnection();
+        //Language tester
        // Locale.setDefault(new Locale("fr"));
         launch(args);
         JDBC.closeConnection();

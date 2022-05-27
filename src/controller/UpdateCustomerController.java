@@ -23,6 +23,12 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 
+/**
+ * The controller class for the Update Customer screen.
+ *
+ * @author Najee Burnette
+ */
+
 public class UpdateCustomerController implements Initializable
 {
     Users currentUser;
@@ -71,8 +77,8 @@ Combo boxes should have set values, dont know if needed, MID PRIORITY
         idField.setText(String.valueOf(selectedCustomer.getCustomerID()));
         nameField.setText(selectedCustomer.getCustomerName());
         addressField.setText(selectedCustomer.getAddress());
-        //countryComboBox.setVisibleRowCount(selectedCustomer);
-        //firstDivisionComboBox.setButtonCell();
+        countryComboBox.setValue(selectedCustomer.getCountryName());
+        firstDivisionComboBox.setValue(selectedCustomer.getDivisionName());
         postalField.setText(selectedCustomer.getPostalCode());
         phoneField.setText(selectedCustomer.getPhone());
 

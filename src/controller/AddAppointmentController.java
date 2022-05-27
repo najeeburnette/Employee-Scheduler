@@ -22,11 +22,16 @@ import java.sql.*;
 import java.time.*;
 import java.util.ResourceBundle;
 
+/**
+ * The controller class for the Add Appointment screen.
+ *
+ * @author Najee Burnette
+ */
 public class AddAppointmentController implements Initializable {
 
     Users currentUser;
     Customers selectedCustomer;
-    int appointmentId2 = 0;
+    int secondAppointment = 0;
     Timestamp start = null;
     Timestamp end = null;
     private ObservableList<Contacts> contactList = FXCollections.observableArrayList();
@@ -36,16 +41,15 @@ public class AddAppointmentController implements Initializable {
     private ObservableList<LocalTime> endTimeList = FXCollections.observableArrayList();
 
 
-
     @FXML private TextField appointmentField;
     @FXML private Label appointmentLabel;
 
     @FXML private Button cancelButton;
 
-    @FXML private ComboBox<String> contactComboBox;
+    @FXML private ComboBox contactComboBox;
     @FXML private Label contactLabel;
 
-    @FXML private ComboBox<Integer> customerComboBox;
+    @FXML private ComboBox customerComboBox;
     @FXML private Label customerLabel;
 
     @FXML private DatePicker datePicker;
@@ -78,19 +82,13 @@ public class AddAppointmentController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle)
     {
-        try { populateContactCombobox(); }
+        try { populateContactCombobox();
+            populateUserComboBox();
+            populateCustomerComboBox();
+            populateTimeComboBoxes();
+        }
         catch (SQLException throwables) { throwables.printStackTrace(); }
-
-        try { populateUserComboBox(); }
-        catch (SQLException throwables) { throwables.printStackTrace(); }
-
-        try { populateCustomerComboBox(); }
-        catch (SQLException throwables) { throwables.printStackTrace(); }
-
-        populateTimeComboBoxes();
-
     }
-
 
     /**
      * This method returns the user back to the main controller without adding an Appointment
@@ -173,7 +171,6 @@ public class AddAppointmentController implements Initializable {
      * pulls all the customers from the database to populate the customers combo box.
      * @throws SQLException
      */
-
     @FXML private void populateCustomerComboBox() throws SQLException
     {
         ObservableList<Integer> customerCombo = FXCollections.observableArrayList();
@@ -219,12 +216,13 @@ public class AddAppointmentController implements Initializable {
     }
 
     /**
-     * This will alert the User with an error if an appointments start or end time fall outsidebusiness hours.
-     * @param startTime
+     * This will alert the User with an error if an appointments start or end time fall outside business hours.
+     * @param chosenTime
      * @return
      */
-    private boolean hoursOfOperation(LocalTime startTime)
+    private boolean hoursOfOperation(LocalTime chosenTime)
     {
+
         LocalTime openTime = LocalTime.of(8, 00);
         LocalTime closedTime = LocalTime.of(22, 00);
 
@@ -232,77 +230,64 @@ public class AddAppointmentController implements Initializable {
 
         ZoneId zoneEST = ZoneId.of("US/Eastern");
 
-        LocalDateTime combined = LocalDateTime.of(date, startTime);
+        LocalDateTime combined = LocalDateTime.of(date, chosenTime);
         ZonedDateTime convertedDate = combined.atZone(ZoneId.systemDefault()).withZoneSameInstant(zoneEST);
         LocalTime easternTime = convertedDate.toLocalTime();
 
-        if(easternTime.isBefore(openTime) || easternTime.isAfter(closedTime))
-        {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setHeaderText("Chosen timeframe is outside hours of business operation.");
-            alert.setContentText("Selected Time: " + startTime + "\nEastern Time: "
-                    + easternTime + "\nBusiness Hours: 08:00 to 22:00 US/Eastern");
-            alert.showAndWait();
-            return false;
-        }
-        return true;
+        if(easternTime.isBefore(openTime) || easternTime.isAfter(closedTime)) { return false; }
 
+        return true;
     }
 
     /**
      * This method will display an error message if an appointment being added overlaps an existing appointment.
-     * @param startA
-     * @param endB
+     * @param startTime
+     * @param endTime
      * @return
      * @throws SQLException
      */
-    private boolean appointmentOverlap(Timestamp startA, Timestamp endB) throws SQLException
+    private boolean appointmentOverlap(Timestamp startTime, Timestamp endTime) throws SQLException
     {
-
         try
         {
-            if(appointmentField.getText().isBlank())
-            {
-                appointmentId2 = 0;
-            }
-            else
-            {
-                appointmentId2 = Integer.parseInt(appointmentField.getText().trim());
-            }
+            if(appointmentField.getText().isBlank()) { secondAppointment = 0; }
+            else { secondAppointment = Integer.parseInt(appointmentField.getText().trim()); }
 
             int customerID1 = (int) customerComboBox.getValue();
             int contactID1 = getContactId((String) contactComboBox.getValue());
 
-            System.out.println("\nSelected Appointment ID: " + appointmentId2);
+            System.out.println("\nSelected Appointment ID: " + secondAppointment);
             System.out.println("Selected Contact ID: " + contactID1);
             System.out.println("Selected Customer ID: " + customerID1);
-            System.out.println("Selected Start: " + startA);
-            System.out.println("Selected End: " + endB);
+            System.out.println("Selected Start: " + startTime);
+            System.out.println("Selected End: " + endTime);
 
             PreparedStatement ps = JDBC.connection.prepareStatement(
                     "SELECT * FROM appointments "
                             + "WHERE (? BETWEEN Start AND End OR ? BETWEEN Start AND End OR ? < Start AND ? > End) "
                             + "AND (Customer_ID = ? AND Appointment_ID != ?)");
 
-            ps.setTimestamp(1, startA);
-            ps.setTimestamp(2, endB);
-            ps.setTimestamp(3, startA);
-            ps.setTimestamp(4, endB);
+            ps.setTimestamp(1, startTime);
+            ps.setTimestamp(2, endTime);
+            ps.setTimestamp(3, startTime);
+            ps.setTimestamp(4, endTime);
             ps.setInt(5, customerID1);
-            ps.setInt(6, appointmentId2);
+            ps.setInt(6, secondAppointment);
 
             ResultSet rs = ps.executeQuery();
 
-            if(rs.next())
-            {
-                return true;
-            }
+            if(rs.next()) { return true; }
             return false;
         }
         catch (SQLException ex) { System.out.println("SQL Error!"); }
         return false;
-
     }
+
+    /**
+     * Gets the contact ID of the contact that matches the string passed through
+     * @param temp
+     * @return
+     */
 
     private int getContactId(String temp)
     {
@@ -315,6 +300,18 @@ public class AddAppointmentController implements Initializable {
         }
         return -1;
     }
+
+    /**
+     * Saves the appointment being added to the database
+     *<p>
+     * Data is pulled from the fields and combo boxes passed through multiple integrity checks.
+     * Data is then inserted into the database using a prepared statement.
+     *</p>
+     *
+     * @param event when the save button is clicked
+     * @throws SQLException
+     * @throws IOException
+     */
 
     @FXML void onActionSaveButton(ActionEvent event) throws SQLException, IOException
     {
@@ -345,7 +342,7 @@ public class AddAppointmentController implements Initializable {
             if (descriptionField.getText().isBlank()) {
                 error.append("\n - Description field is empty.");
             } else {
-                title = descriptionField.getText();
+                description = descriptionField.getText();
             }
 
             if (locationField.getText().isBlank()) {
@@ -355,7 +352,7 @@ public class AddAppointmentController implements Initializable {
             }
 
             if (typeField.getText().isBlank()) {
-                error.append("\n - Name field is empty.");
+                error.append("\n - Type field is empty.");
             } else {
                 type = typeField.getText();
             }
@@ -395,8 +392,8 @@ public class AddAppointmentController implements Initializable {
                 LocalDate date = datePicker.getValue();
                 LocalDateTime apptStart = LocalDateTime.of(date, startBox);
                 LocalDateTime apptEnd = LocalDateTime.of(date, endBox);
-                Timestamp start = Timestamp.valueOf(apptStart);
-                Timestamp end = Timestamp.valueOf(apptEnd);
+                start = Timestamp.valueOf(apptStart);
+                end = Timestamp.valueOf(apptEnd);
             }
 
             if(datePicker == null)
@@ -404,49 +401,55 @@ public class AddAppointmentController implements Initializable {
                 error.append("\n - Please selected an Date");
             }
 
-            if(appointmentOverlap(start, end))
+            if(startBox != null && endBox != null && contactComboBox.getValue()!= null && customerComboBox.getValue() != null)
             {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setHeaderText("Appointment Time Conflict");
-                alert.setContentText("The currently selected timeslot conflicts with a pre-existing appointment.");
-                alert.showAndWait();
-                return;
+                System.out.println(startBox);
+                System.out.println(endBox);
+                System.out.println(contactComboBox);
+                System.out.println(customerComboBox);
+
+                if (appointmentOverlap(start, end)) {
+                    error.append("\n - Appointment time overlaps another\n   customer appointment");
+                }
+                if (endBox.isBefore(startBox)) {
+                    error.append("\n - Appointment end time is before start time");
+                }
+                if (!hoursOfOperation(startBox) || !hoursOfOperation(endBox)) {
+                error.append("\n - Appointment is outside business hours\n   (8:00am-10:00pm EST)");
+                }
             }
 
-            if(endBox.isBefore(startBox))
+            //Show error messages if there are
+            if (error.toString().compareTo("Error: ") != 0)
             {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setHeaderText("ERROR");
-                alert.setContentText("End Time Cannot Be Before Start Time");
-                alert.showAndWait();
-                return;
+                errorLabel.setText(error.toString());
+                errorLabel.setVisible(true);
             }
+            else
+            {
+                errorLabel.setVisible(false);
+                PreparedStatement ps = JDBC.connection.prepareStatement("INSERT INTO appointments"
+                                + "(Title, Description, Location, Type, Start, "
+                                + "End, Create_Date, Created_By, Last_Update, Last_Updated_By, "
+                                + "Customer_ID, User_ID, Contact_ID) "
+                                + "VALUES(?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), ?, ?, ?, ?)",
+                        Statement.RETURN_GENERATED_KEYS);
 
-            if(!hoursOfOperation(startBox)) { return; }
+                ps.setString(1, title);
+                ps.setString(2, description);
+                ps.setString(3, location);
+                ps.setString(4, type);
+                ps.setTimestamp(5, start);
+                ps.setTimestamp(6, end);
+                ps.setString(7, lastUpdatedBy);
+                ps.setString(8, lastUpdatedBy);
+                ps.setInt(9, customerId);
+                ps.setInt(10, userId);
+                ps.setInt(11, contactId);
 
-            if(!hoursOfOperation(endBox)) { return; }
-
-            PreparedStatement ps = JDBC.connection.prepareStatement("INSERT INTO appointments"
-                            + "(Title, Description, Location, Type, Start, "
-                            + "End, Create_Date, Created_By, Last_Update, Last_Updated_By, "
-                            + "Customer_ID, User_ID, Contact_ID) "
-                            + "VALUES(?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), ?, ?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS);
-
-            ps.setString(1, title);
-            ps.setString(2, description);
-            ps.setString(3, location);
-            ps.setString(4, type);
-            ps.setTimestamp(5, start);
-            ps.setTimestamp(6, end);
-            ps.setString(7, lastUpdatedBy);
-            ps.setString(8, lastUpdatedBy);
-            ps.setInt(9, customerId);
-            ps.setInt(10, userId);
-            ps.setInt(11, contactId);
-
-            int result = ps.executeUpdate();
-            returnToMain();
+                int result = ps.executeUpdate();
+                returnToMain();
+            }
         }
         catch (SQLException ex)
         {

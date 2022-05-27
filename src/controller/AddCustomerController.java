@@ -23,6 +23,11 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 
+/**
+ * The controller class for the Add Customer screen.
+ *
+ * @author Najee Burnette
+ */
 public class AddCustomerController implements Initializable
 {
     Users currentUser;
@@ -60,7 +65,6 @@ public class AddCustomerController implements Initializable
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-
         populateFirstLevelCombo();
         populateCountryCombo();
     }
@@ -73,6 +77,7 @@ public class AddCustomerController implements Initializable
      * The ID of the selected country is compared with the first level divisions table
      * and the divisions that match the same ID are used to
      * populate the State/Region combo box.
+     *</p>
      *
      * @param event when the user selects a country from the combo box
      */
@@ -163,6 +168,7 @@ public class AddCustomerController implements Initializable
      * <p>
      * Data is pulled from the database using a prepared statement and a SELECT
      * query.The list changes depending on country is selected from the country combo box.
+     * </p>
      */
     @FXML
     private void populateFirstLevelCombo()
@@ -211,6 +217,7 @@ public class AddCustomerController implements Initializable
      * <p>
      * Data is pulled from the database using a prepared statement and a SELECT
      * query.
+     * </p>
      */
     @FXML
     private void populateCountryCombo()
@@ -253,6 +260,16 @@ public class AddCustomerController implements Initializable
         }
     }
 
+    /**
+     * Saves the customer being added to the database
+     *<p>
+     * Data is pulled from the fields and combo boxes passed through multiple integrity checks.
+     * Data is then inserted into the database using a prepared statement.
+     *</p>
+     *
+     * @param event when the save button is clicked
+     * @throws SQLException
+     */
     @FXML
     void onActionSaveButton(ActionEvent event) throws SQLException
     {
@@ -363,6 +380,7 @@ public class AddCustomerController implements Initializable
 
     /**
      * This method returns the user back to the main controller without adding a Customer
+     *
      * @param actionEvent applied to Cancel Button
      * @throws IOException
      */
