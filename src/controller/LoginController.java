@@ -1,24 +1,29 @@
 package controller;
 
-import com.mysql.cj.Messages;
 import helper.JDBC;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import main.Appointments;
 import main.Users;
 
 /**
@@ -29,8 +34,10 @@ import main.Users;
 
 public class LoginController implements Initializable
 {
-    private boolean loginAttempt = false;
     Users currentUser;
+    ObservableList<Appointments> alertList = FXCollections.observableArrayList();
+    private boolean loginAttempt = false;
+    DateTimeFormatter loginTrackerFormat = DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm");
 
     @FXML private Button loginButton;
     @FXML private PasswordField passwordField;
@@ -65,10 +72,11 @@ public class LoginController implements Initializable
      * @throws SQLException throws when sql operation is failed or error interpreted
      */
     @FXML
-    void onActionLogin(ActionEvent event) throws IOException, SQLException {
+    void onActionLogin(ActionEvent event) throws IOException, SQLException
+    {
 
 
-        // Prompts an error message if fields are empty
+
         if(useridField.getText().trim().isBlank() || passwordField.getText().trim().isBlank()) {
             errorPopup(1);
         }
@@ -76,7 +84,7 @@ public class LoginController implements Initializable
         int userID = Integer.parseInt(useridField.getText().trim());
         String passwordText = passwordField.getText().trim();
 
-        //  Match user ID and Password with database
+
         PreparedStatement ps = JDBC.connection.prepareStatement("SELECT * FROM users WHERE User_ID = ? AND Password = ?");
 
         ps.setInt(1, userID);
@@ -86,6 +94,7 @@ public class LoginController implements Initializable
 
         if(!rs.next()) {
             loginAttempt = false;
+            loginTracker(loginAttempt);
             errorPopup(2);
         }
         else
@@ -97,6 +106,8 @@ public class LoginController implements Initializable
                 currentUser.setuserName(rs.getString("User_Name"));
 
                 loginAttempt = true;
+                loginTracker(loginAttempt);
+                appointmentAlert();
                 toMain();
             }
             while (rs.next());
@@ -145,5 +156,79 @@ public class LoginController implements Initializable
         stage.setTitle("Scheduler");
         stage.setScene(scene);
         stage.show();
+    }
+
+    public void appointmentAlert()
+    {
+        DateTimeFormatter alertFormat = DateTimeFormatter.ofPattern("dd MMM'.' yyyy 'at' HH:mm'.'");
+        try
+        {
+            PreparedStatement ps =JDBC.connection.prepareStatement(
+                    "SELECT * FROM APPOINTMENTS WHERE Start BETWEEN NOW() "
+                            + "AND ADDDATE(NOW(), INTERVAL 15 MINUTE)");
+            ResultSet rs = ps.executeQuery();
+
+            if(!rs.next())
+            {
+                Alert alert2 = new Alert(Alert.AlertType.INFORMATION);
+                alert2.setTitle("Appointment Reminder");
+                alert2.setHeaderText("No Upcoming Appointments");
+                alert2.showAndWait();
+            }
+            else
+            {
+                do
+                {
+                    int appointmentID = rs.getInt("Appointment_ID");
+                    LocalDateTime alertDate = rs.getTimestamp("Start").toLocalDateTime();
+
+                    alertList.add(new Appointments(appointmentID, alertDate));
+
+                    String formatted = alertDate.format(alertFormat);
+
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Appointment Reminder");
+                    alert.setHeaderText("Appointment starting within 15 minutes!");
+                    alert.setContentText("Appointment: #" + appointmentID  + "\n Scheduled on: " + formatted);
+                    alert.showAndWait();
+                }
+                while(rs.next());
+            }
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+            System.out.println(e.getMessage());
+            System.out.println("Error with SQL!");
+        }
+    }
+
+    /**
+     * Tracks user login activity and saves successful and failed login attempts to
+     * login_activity.
+     *
+     * @param attempt the login ID
+     * @throws IOException when the file cannot be found
+     */
+    private void loginTracker(boolean attempt) throws IOException
+    {
+        FileWriter fileName = new FileWriter("login_activity.txt", true);
+        BufferedWriter loginAttempt = new BufferedWriter(fileName);
+
+        if(attempt == true)
+        {
+            loginAttempt.append(LocalDateTime.now().format(loginTrackerFormat)
+                    + " Login Attempt on User: " + currentUser.getuserName() + " -- Successful!");
+            loginAttempt.newLine();
+            loginAttempt.close();
+        }
+        else if(attempt == false)
+        {
+            loginAttempt.append(LocalDateTime.now().format(loginTrackerFormat)
+                    + " Login Attempt on User: " + currentUser.getuserName() + " -- Failed Attempt!");
+
+            loginAttempt.newLine();
+            loginAttempt.close();
+        }
     }
 }

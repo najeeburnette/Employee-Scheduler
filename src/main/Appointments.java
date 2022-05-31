@@ -24,7 +24,6 @@ public class Appointments {
     private int userID;
     private int contactID;
     private String contactName;
-    private String customerName;
 
     /**
      * Appointments constructor
@@ -44,13 +43,12 @@ public class Appointments {
      * @param userID the user ID
      * @param contactID the contact ID
      * @param contactName the contact name
-     * @param customerName the customer name
      */
 
     public Appointments(int appointmentID, String title, String description,
                         String location, String type, LocalDateTime startTime, LocalDateTime endTime, LocalDateTime createDate,
                         String createdBy, Timestamp lastUpdate, String lastUpdatedBy, int customerID,
-                        int userID, int contactID, String contactName, String customerName)
+                        int userID, int contactID, String contactName)
     {
         setAppointmentID(appointmentID);
         setTitle(title);
@@ -87,6 +85,7 @@ public class Appointments {
      *
      * @return the contact name
      */
+
     public String getContactName()
     {
         return contactName;

@@ -23,6 +23,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Locale;
 import java.util.Optional;
@@ -44,9 +46,10 @@ public class MainMenuController implements Initializable
 
 
     ObservableList<Customers> customerList = FXCollections.observableArrayList();
-    private ObservableList<Appointments> appointmentList = FXCollections.observableArrayList();
+    ObservableList<Appointments> appointmentList = FXCollections.observableArrayList();
     ObservableList<Countries> countryList = FXCollections.observableArrayList();
     ObservableList<FirstLevelDivisions> divisionsList = FXCollections.observableArrayList();
+
 
     @FXML private Label schedulingTitleLabel;
     @FXML private Label customerLabel;
@@ -58,6 +61,10 @@ public class MainMenuController implements Initializable
     @FXML private Button deleteCustomerButton;
     @FXML private Button updateAppointmentButton;
     @FXML private Button updateCustomerButton;
+    @FXML private Button reportsButton;
+    @FXML private Button logoutButton;
+    @FXML private Button closeButton;
+
 
     @FXML private RadioButton weeklyRadioButton;
     @FXML private RadioButton allRadioButton;
@@ -99,8 +106,8 @@ public class MainMenuController implements Initializable
         locationColumn.setCellValueFactory(new PropertyValueFactory<>("location"));
         contactIdColumn.setCellValueFactory(new PropertyValueFactory<>("contactID"));
         typeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
-        startColumn.setCellValueFactory(new PropertyValueFactory<>("startTime"));
-        endColumn.setCellValueFactory(new PropertyValueFactory<>("endTime"));
+        startColumn.setCellValueFactory(new PropertyValueFactory<>("start"));
+        endColumn.setCellValueFactory(new PropertyValueFactory<>("end"));
         customerIdColumn2.setCellValueFactory(new PropertyValueFactory<>("customerID"));
         userIdColumn.setCellValueFactory(new PropertyValueFactory<>("userID"));
 
@@ -111,6 +118,8 @@ public class MainMenuController implements Initializable
         try { populateAppointmentsTable(); }
         catch (SQLException throwables) { throwables.printStackTrace(); }
         catch (IOException e) { e.printStackTrace(); }
+
+
 
     }
     /**
@@ -196,9 +205,12 @@ public class MainMenuController implements Initializable
      *@throws SQLException throws when sql operation is failed or error interpreted
      */
 
-    @FXML private void populateAppointmentsTable() throws SQLException, IOException {
-        try {
+    @FXML private void populateAppointmentsTable() throws SQLException, IOException
+    {
+        try
+        {
             appointmentList.clear();
+            allRadioButton.setSelected(true);
             PreparedStatement ps = JDBC.connection.prepareStatement(
                     "SELECT * FROM appointments, customers, users, contacts "
                             + "WHERE appointments.User_ID = users.User_ID "
@@ -208,8 +220,8 @@ public class MainMenuController implements Initializable
 
             ResultSet rs = ps.executeQuery();
 
-            while (rs.next()) {
-
+            while (rs.next())
+            {
                 int appointmentID = rs.getInt("Appointment_ID");
                 String title = rs.getString("Title");
                 String description = rs.getString("Description");
@@ -219,7 +231,7 @@ public class MainMenuController implements Initializable
                 LocalDateTime end = rs.getTimestamp("End").toLocalDateTime();
                 int customerID = rs.getInt("Customer_ID");
                 String contactName = rs.getString("Contact_Name");
-                String customerName = rs.getString("Customer_Name");
+
 
                  //Not in table
                 LocalDateTime createdDate = rs.getTimestamp("Create_Date").toLocalDateTime();
@@ -233,8 +245,9 @@ public class MainMenuController implements Initializable
 
                 appointmentList.add(new Appointments(appointmentID, title, description,
                         location, type, start, end, createdDate, createdBy, lastUpdate,
-                        lastUpdatedBy, customerID, userID, contactID, contactName, customerName));
+                        lastUpdatedBy, customerID, userID, contactID, contactName));
             }
+
             appointmentTable.setItems(appointmentList);
         }
 
@@ -453,31 +466,36 @@ public class MainMenuController implements Initializable
             }
         }
     }
-    @FXML
-    void onActionAllRadio(ActionEvent event) throws SQLException, IOException {
+
+    @FXML void onActionAllRadio(ActionEvent event) throws SQLException, IOException {
+        weeklyRadioButton.setSelected(false);
+        monthlyRadioButton.setSelected(false);
         populateAppointmentsTable();
     }
     /**
      * Filters the appointment table view by week when button is radio clicked.
      * @param event when the weekly view radio button is selected.
      */
-    @FXML
-    void onActionWeeklyButton(ActionEvent event) { weekFilter(appointmentList); }
+    @FXML void onActionWeeklyButton(ActionEvent event) {
+        allRadioButton.setSelected(false);
+        monthlyRadioButton.setSelected(false);
+        weekFilter(appointmentList); }
 
     /**
      * Sets the parameters for the weekly appointment view using Lambda expression
      * @param list the observable list of all appointments
      */
-    public void weekFilter(ObservableList list)
+    private void weekFilter(ObservableList list)
     {
-        LocalDateTime weekly = LocalDateTime.now().plusDays(7);
-        LocalDateTime current = LocalDateTime.now();
+        LocalDateTime weekEnd = LocalDateTime.now().plusDays(7);
+        LocalDateTime weekStart = LocalDateTime.now().minusDays(7);
 
         FilteredList<Appointments> resultWeek = new FilteredList<>(list);
         resultWeek.setPredicate(a ->
         {
             LocalDateTime date = a.getStart();
-            return (date.isEqual(current) || date.isAfter(current)) && (date.isBefore(weekly) || date.isEqual(weekly));
+            return (date.isEqual(weekStart) || date.isAfter(weekStart))
+                    && (date.isBefore(weekEnd) || date.isEqual(weekEnd));
         });
         appointmentTable.setItems(resultWeek);
     }
@@ -486,26 +504,53 @@ public class MainMenuController implements Initializable
      * Filters the appointment table view by month when button is radio clicked.
      * @param event when the monthly view radio button is selected.
      */
-    @FXML
-    void onActionMonthlyButton(ActionEvent event) { monthFilter(appointmentList);}
+    @FXML void onActionMonthlyButton(ActionEvent event) {
+        allRadioButton.setSelected(false);
+        weeklyRadioButton.setSelected(false);
+        monthFilter(appointmentList);
+    }
 
     /**
      * Filters the appointments view based on the month using a Lambda expression
      * @param list the observable list of all appointments
      */
-    public void monthFilter(ObservableList list)
+    private void monthFilter(ObservableList list)
     {
         LocalDateTime current = LocalDateTime.now();
-        LocalDateTime monthly = current.with(TemporalAdjusters.lastDayOfMonth());
+        LocalDateTime monthEnd = current.with(TemporalAdjusters.lastDayOfMonth());
+        LocalDateTime monthStart = current.with(TemporalAdjusters.firstDayOfMonth());
 
         FilteredList<Appointments> result = new FilteredList<>(list);
         result.setPredicate(a ->
         {
             LocalDateTime date = a.getStart();
-            return (date.isEqual(current) || date.isAfter(current)) && (date.isEqual(monthly) || date.isBefore(monthly));
+            return (date.isEqual(monthStart) || date.isAfter(monthStart))
+                    && (date.isEqual(monthEnd) || date.isBefore(monthEnd));
         }
         );
         appointmentTable.setItems(result);
+    }
+
+    @FXML void onActionLogoutButton(ActionEvent event) throws IOException {
+        Parent root = FXMLLoader.load(getClass().getResource("/view/Login Screen.fxml"));
+        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+        Scene scene = new Scene(root);
+        stage.setTitle("Scheduler");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    @FXML void onActionReports(ActionEvent event) throws IOException {
+        Parent root = FXMLLoader.load(getClass().getResource("/view/ReportsScreen.fxml"));
+        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+        Scene scene = new Scene(root);
+        stage.setTitle("Reports");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    @FXML void onActionCloseButton(ActionEvent event) {
+
     }
 
     /**
