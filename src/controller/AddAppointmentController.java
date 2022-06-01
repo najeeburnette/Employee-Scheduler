@@ -418,8 +418,7 @@ public class AddAppointmentController implements Initializable {
                 error.append("\n - Appointment is outside business hours\n   (8:00am-10:00pm EST)");
                 }
             }
-
-            //Show error messages if there are
+            
             if (error.toString().compareTo("Error: ") != 0)
             {
                 errorLabel.setText(error.toString());

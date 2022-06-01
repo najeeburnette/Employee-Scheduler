@@ -29,7 +29,7 @@ public class Main extends Application {
 
         JDBC.openConnection();
         //Language tester
-       // Locale.setDefault(new Locale("fr"));
+       //Locale.setDefault(new Locale("fr"));
         launch(args);
         JDBC.closeConnection();
     }

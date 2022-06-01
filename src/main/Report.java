@@ -1,6 +1,7 @@
 package main;
 
 /**
+ *The Reports Class
  *
  * @author Najee Burnette
  */

@@ -53,10 +53,11 @@ public class LoginController implements Initializable
 
         rb = ResourceBundle.getBundle("properties/lang", Locale.getDefault());
         userIdLabel.setText(rb.getString("UserID"));
+        loginButton.setText(rb.getString("Login"));
         labelLocale.setText(rb.getString("Locale"));
         exitButton.setText(rb.getString("Exit"));
         labelLocaleStatus.setText(rb.getString("LocaleStatus"));
-        //passwordLabel.setText(rb.getString("Password"));
+        passwordLabel.setText(rb.getString("Password"));
     }
 
 
@@ -66,6 +67,7 @@ public class LoginController implements Initializable
      * The user ID and password is matched with the database using a prepared
      * statement and a SELECT query. An error message is provided if no match is
      * found or if any of the fields are left blank.
+     *</p>
      *
      * @param event when the use  presses the "Login" Button
      * @throws IOException throws when input or output operation is failed or error interpreted
@@ -141,13 +143,17 @@ public class LoginController implements Initializable
                 alert.showAndWait();
                 break;
             case 2:
-                alert.setTitle("Error");
-                alert.setHeaderText("Login Attempt Fail");
+                alert.setTitle("errorTitle2");
+                alert.setHeaderText("errorPopup2");
                 alert.showAndWait();
                 break;
         }
     }
 
+    /**
+     * Switches screens to the login menu.
+     * @throws IOException
+     */
     private void toMain() throws IOException
     {
         Parent root = FXMLLoader.load(getClass().getResource("/view/Main Menu.fxml"));
@@ -158,6 +164,10 @@ public class LoginController implements Initializable
         stage.show();
     }
 
+    /**
+     * Alerts the user upon a successful of any appointments that are are are scheduled
+     * withing 15 minutes of logging in
+     */
     public void appointmentAlert()
     {
         DateTimeFormatter alertFormat = DateTimeFormatter.ofPattern("dd MMM'.' yyyy 'at' HH:mm'.'");

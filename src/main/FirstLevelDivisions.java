@@ -3,6 +3,11 @@ package main;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
+/**
+ * The First Division Class
+ *
+ * @author Najee Burnette
+ */
 public class FirstLevelDivisions {
 
     private int divisionID;

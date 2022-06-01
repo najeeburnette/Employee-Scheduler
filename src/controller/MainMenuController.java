@@ -349,11 +349,12 @@ public class MainMenuController implements Initializable
             stage.show();
         }
     }
-//popup on successfull delete not appearing, resource bundle error?
+
+
     /**
      * Deletes the appointment from the database.
      * <p>
-     * Checks if an appointment is selected and sends an alert if no.
+     * Checks if an appointment is selected and sends an alert if not.
      * A prepared statement is used to delete data from the database. The user
      * A notification pops up upon successful deletion.
      * </p>
@@ -413,18 +414,26 @@ public class MainMenuController implements Initializable
         }
         if(selectedAppointment == null)
         {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Error Dialog");
-            alert.setContentText("Select an appointment to delete");
-            alert.showAndWait();
+           errorPopup(2);
         }
     }
 
-    //needs notification upon delete
+    /**
+     * Deletes the customer along with associated appointments from the database.
+     * <p>
+     * Checks if an customer is selected and sends an alert if not.
+     * A prepared statement is used to delete data from the database. The user
+     * A notification pops up upon successful deletion.
+     * </p>
+     *
+     * @param event when the delete button is pushed while an appointment is selected
+     * @throws IOException
+     */
     @FXML
     void onActionCustomerDelete(ActionEvent event) throws IOException{
 
         selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
+        String custName = selectedCustomer.getCustomerName();
 
         if(selectedCustomer != null)
         {
@@ -450,13 +459,23 @@ public class MainMenuController implements Initializable
 
                     if(rs > 0)
                     {
-                        System.out.println("Customer Deleted");
                         populateCustomersTable();
                         populateAppointmentsTable();
+
+                        Alert customerAlert = new Alert(Alert.AlertType.ERROR);
+                        customerAlert.setTitle("Delete Successful");
+                        customerAlert.setHeaderText("Customer: " + custName + " and all appointments deleted!");
+                        customerAlert.showAndWait();
                     }
                     else
                     {
-                        System.out.println("Deletion Failed");
+                        populateCustomersTable();
+                        populateAppointmentsTable();
+
+                        Alert customerAlert = new Alert(Alert.AlertType.ERROR);
+                        customerAlert.setTitle("Delete Successful");
+                        customerAlert.setHeaderText("Customer: " + custName + " and all appointments deleted!");
+                        customerAlert.showAndWait();
                     }
                 }
                 catch (SQLException ex)
@@ -465,13 +484,22 @@ public class MainMenuController implements Initializable
                 }
             }
         }
+        else
+        {
+            errorPopup(1);
+        }
     }
 
+    /**
+     * Filters the appointment table to show all appointments when button is radio clicked.
+     * @param event when the weekly view radio button is selected.
+     */
     @FXML void onActionAllRadio(ActionEvent event) throws SQLException, IOException {
         weeklyRadioButton.setSelected(false);
         monthlyRadioButton.setSelected(false);
         populateAppointmentsTable();
     }
+
     /**
      * Filters the appointment table view by week when button is radio clicked.
      * @param event when the weekly view radio button is selected.
@@ -531,6 +559,11 @@ public class MainMenuController implements Initializable
         appointmentTable.setItems(result);
     }
 
+    /**
+     * Switches screens back to the Login Menu.
+     * @param event
+     * @throws IOException
+     */
     @FXML void onActionLogoutButton(ActionEvent event) throws IOException {
         Parent root = FXMLLoader.load(getClass().getResource("/view/Login Screen.fxml"));
         Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
@@ -540,6 +573,11 @@ public class MainMenuController implements Initializable
         stage.show();
     }
 
+    /**
+     * Switches screens to the Reports Page
+     * @param event
+     * @throws IOException
+     */
     @FXML void onActionReports(ActionEvent event) throws IOException {
         Parent root = FXMLLoader.load(getClass().getResource("/view/ReportsScreen.fxml"));
         Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
@@ -549,7 +587,13 @@ public class MainMenuController implements Initializable
         stage.show();
     }
 
-    @FXML void onActionCloseButton(ActionEvent event) {
+    /**
+     * Disconnects from the database and closes the application.
+     * @param event
+     */
+    @FXML void onActionExitButton(ActionEvent event) {
+        JDBC.closeConnection();
+        System.exit(0);
 
     }
 
@@ -558,15 +602,13 @@ public class MainMenuController implements Initializable
      */
     private void errorPopup(int alertNum) {
 
-        //error currently due to incomplete resource bundle
-        ResourceBundle rb = ResourceBundle.getBundle("properties/lang", Locale.getDefault());
 
         Alert alert = new Alert(Alert.AlertType.ERROR);
 
         switch (alertNum) {
             case 1:
-                alert.setTitle(rb.getString("Error: Nothing Selected"));
-                alert.setHeaderText(rb.getString("No customer selected!"));
+                alert.setTitle("Error: Nothing Selected");
+                alert.setHeaderText("No customer selected!");
                 alert.showAndWait();
                 break;
             case 2:

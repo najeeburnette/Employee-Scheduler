@@ -29,6 +29,11 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 
+/**
+ * FXML controller class for Reports page.
+ *
+ * @author Najee Burnette
+ */
 public class ReportsController implements Initializable {
 
     ObservableList<Report> reportList = FXCollections.observableArrayList();
@@ -99,7 +104,7 @@ public class ReportsController implements Initializable {
     }
 
     /**
-     * This method returns the user back to the main controller
+     * This returns the user back to the Main Menu
      *
      * @param actionEvent applied to Main Menu Button
      * @throws IOException
@@ -116,11 +121,12 @@ public class ReportsController implements Initializable {
 
 
     /**
-     * Populates the total appointments reports table.
+     * Populates the month/type appointments reports table.
      * <p>
      * Data is pulled from database to populate the table using a prepared statement
-     * Data is put inside an observable used to display in the table view.
+     * Data is put inside an observable list to display in the table view.
      *</p>
+     *
      *@throws SQLException throws when sql operation is failed or error interpreted
      */
     private void populateReportTable() throws SQLException
@@ -146,7 +152,16 @@ public class ReportsController implements Initializable {
         }
         catch(SQLException e) { System.out.println("SQL error!"); }
     }
-
+    /**
+     *
+     * Populates the contact appointments reports table.
+     * <p>
+     * Data is pulled from database to populate the table using a prepared statement
+     * Data is put inside an observable list to display in the table view.
+     *</p>
+     *
+     *@throws SQLException throws when sql operation is failed or error interpreted
+     */
     private void populateContactTable() throws SQLException
     {
         try
@@ -175,7 +190,6 @@ public class ReportsController implements Initializable {
                 int customerID = rs.getInt("Customer_ID");
                 String contactName = rs.getString("Contact_Name");
 
-                // Other data not needed for table
                 LocalDateTime createdDate = rs.getTimestamp("Create_Date").toLocalDateTime();
                 String createdBy = rs.getString("Created_By");
                 Timestamp lastUpdate = rs.getTimestamp("Last_Update");
@@ -194,6 +208,10 @@ public class ReportsController implements Initializable {
         catch(SQLException e) { System.out.println("SQL error!"); }
     }
 
+    /**
+     * Populates contact combo box with data pulled from the database using a prepared statement.
+     * @throws SQLException
+     */
     private void populateContactCombobox() throws SQLException
     {
         ObservableList<String> contactCombo = FXCollections.observableArrayList();
@@ -220,7 +238,10 @@ public class ReportsController implements Initializable {
     }
 
 
-
+    /**
+     * Populates user combo box with data pulled from the database using a prepared statement.
+     * @throws SQLException
+     */
     private void populateUserCombobox() throws SQLException
     {
         ObservableList<String> userCombo = FXCollections.observableArrayList();
@@ -351,6 +372,15 @@ public class ReportsController implements Initializable {
         catch(SQLException e) { System.out.println("SQL error!"); }
     }
 
+    /**
+     * Populates the user appointments reports table.
+     * <p>
+     * Data is pulled from database to populate the table using a prepared statement
+     * Data is put inside an observable list to display in the table view.
+     *</p>
+     *
+     *@throws SQLException throws when sql operation is failed or error interpreted
+     */
     private void populateUserTable() throws SQLException
     {
         try
